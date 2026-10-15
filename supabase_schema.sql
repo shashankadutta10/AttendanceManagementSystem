@@ -6,20 +6,20 @@
 -- 1. Create Institutional Geofence & Schedule Configuration Table
 create table if not exists public.attendance_config (
   id text primary key default 'default',
-  name text not null default 'Campus Center',
-  latitude numeric not null default 27.48333,
-  longitude numeric not null default 94.58333,
+  name text not null default 'SHASHANKA''S HOME',
+  latitude numeric not null default 27.459316,
+  longitude numeric not null default 94.552332,
   radius integer not null default 300,
   start_time text not null default '00:00',
   end_time text not null default '23:59',
   strict_accuracy boolean not null default false,
-  admin_pin text not null default '1234',
+  admin_pin text not null default '0310',
   updated_at timestamptz default timezone('utc'::text, now())
 );
 
 -- Insert default configuration row if not present
 insert into public.attendance_config (id, name, latitude, longitude, radius, start_time, end_time, strict_accuracy, admin_pin)
-values ('default', 'Campus Center', 27.48333, 94.58333, 300, '00:00', '23:59', false, '1234')
+values ('default', 'SHASHANKA''S HOME', 27.459316, 94.552332, 300, '00:00', '23:59', false, '0310')
 on conflict (id) do nothing;
 
 -- 2. Create Attendance Master Audit Records Table

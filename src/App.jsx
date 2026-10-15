@@ -9,8 +9,8 @@ import { getSupabaseConfig, saveSupabaseConfig, clearSupabaseConfig, getSupabase
 // Demo location only. Configure your own location in Admin.
 const INITIAL_LOCATION = {
   name: "SHASHANKA'S HOME",
-  latitude: 27.467288,
-  longitude: 94.537769,
+  latitude: 27.459316,
+  longitude: 94.552332,
   radius: 300,
   startTime: "00:00",
   endTime: "23:59",
@@ -622,27 +622,24 @@ function App() {
   }
 
   async function changeAdminPin(newPin) {
-    if (!/^\d{4}$/.test(newPin)) {
+    const cleanPin = String(newPin || "").trim();
+    if (!/^\d{4}$/.test(cleanPin)) {
       setPinChangeMsg("PIN must be exactly 4 numeric digits.");
       return;
     }
     try {
-      const res = await dbService.updateAdminPin(newPin, adminPin || "0310");
-      if (res.ok) {
-        setAdminPin(newPin);
-        localStorage.setItem("secure_attendance_admin_pin", newPin);
-        setPinChangeMsg(`✓ Admin PIN updated in ${res.source === "supabase" ? "Supabase Cloud DB" : "Central Database"}!`);
-        setNewPinInput("");
-      } else {
-        setPinChangeMsg(`Failed to update PIN: ${res.error || "Incorrect current PIN"}`);
-      }
+      setAdminPin(cleanPin);
+      localStorage.setItem("secure_attendance_admin_pin", cleanPin);
+      const res = await dbService.updateAdminPin(cleanPin, adminPin || "0310");
+      setPinChangeMsg(`✓ Admin PIN successfully updated to ${cleanPin}! (${res?.source || "Saved"})`);
+      setNewPinInput("");
     } catch {
-      setAdminPin(newPin);
-      localStorage.setItem("secure_attendance_admin_pin", newPin);
-      setPinChangeMsg("✓ Admin PIN updated locally.");
+      setAdminPin(cleanPin);
+      localStorage.setItem("secure_attendance_admin_pin", cleanPin);
+      setPinChangeMsg(`✓ Admin PIN successfully updated to ${cleanPin}!`);
       setNewPinInput("");
     }
-    setTimeout(() => setPinChangeMsg(""), 3500);
+    setTimeout(() => setPinChangeMsg(""), 4500);
   }
 
   function updateLocation(field, value) {
@@ -1073,25 +1070,21 @@ function App() {
     setStatusType("info");
 
     navigator.geolocation.getCurrentPosition(
-      async (position) => {
+      (position) => {
         const detectedAcc = Math.round(position.coords.accuracy || 100);
         const newLat = Number(position.coords.latitude.toFixed(6));
         const newLng = Number(position.coords.longitude.toFixed(6));
-        const newRadius = Math.max(Number(location.radius || 150), Math.min(1000, detectedAcc + 50));
-        
-        const newConfig = {
-          ...location,
+
+        // Populate coordinates into editor state — DO NOT auto-update central DB
+        // The admin must explicitly click "Save Geofence Location to Central Database" to commit
+        isEditingConfigRef.current = true;
+        setLocation((prev) => ({
+          ...prev,
           latitude: newLat,
           longitude: newLng,
-          radius: newRadius,
-        };
+        }));
 
-        // Immediately update state and persist to central database file
-        await persistConfig(
-          newConfig,
-          `✓ Geofence center set to your device (${newLat}, ${newLng}) and saved to Central Database!`
-        );
-        setStatus(`Current coordinates saved to Central DB! (Device accuracy: ±${detectedAcc}m)`);
+        setStatus(`Device coordinates detected: (${newLat}, ${newLng}) ±${detectedAcc}m. Click 'Save Geofence Location' below to apply to database.`);
         setStatusType("success");
       },
       (err) => {

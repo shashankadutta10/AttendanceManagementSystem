@@ -1,5 +1,13 @@
 import { createClient } from "@supabase/supabase-js";
 
+// ============================================================================
+// ☁️ CENTRAL SUPABASE CLOUD DATABASE CONFIGURATION
+// Provide your Supabase Project URL and Anon Key directly in the code below:
+// ============================================================================
+export const SUPABASE_URL = "";      // e.g. "https://xxxxxxxxxxxxxxxx.supabase.co"
+export const SUPABASE_ANON_KEY = ""; // e.g. "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+// ============================================================================
+
 let cachedClient = null;
 let cachedKey = null;
 
@@ -10,8 +18,9 @@ export function getSupabaseConfig() {
   const localUrl = typeof window !== "undefined" ? localStorage.getItem("sa_supabase_url") || "" : "";
   const localKey = typeof window !== "undefined" ? localStorage.getItem("sa_supabase_key") || "" : "";
 
-  const url = (localUrl || envUrl).trim();
-  const key = (localKey || envKey).trim();
+  // Priority: Hardcoded in-code constants > localStorage > environment variables
+  const url = (SUPABASE_URL || localUrl || envUrl).trim();
+  const key = (SUPABASE_ANON_KEY || localKey || envKey).trim();
 
   return { url, key, isConfigured: Boolean(url && key) };
 }
