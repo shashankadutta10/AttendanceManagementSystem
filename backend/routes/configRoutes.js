@@ -27,13 +27,8 @@ export async function handleConfigRoute(req, res, pathname, method, isLaptop, { 
 
     // Verification:
     // Authorized if request originates from master laptop (isLaptop = true)
-    // OR if PIN matches current database PIN, OR known admin defaults (0310, 0307, 1234)
-    const isAuthorized =
-      isLaptop ||
-      incomingPin === expectedPin ||
-      incomingPin === '0310' ||
-      incomingPin === '0307' ||
-      incomingPin === '1234';
+    // OR if incoming PIN strictly matches the central database PIN
+    const isAuthorized = isLaptop || incomingPin === expectedPin;
 
     if (!isAuthorized) {
       console.warn(`[Config Route] 401 Unauthorized config update attempt with PIN: "${incomingPin}"`);

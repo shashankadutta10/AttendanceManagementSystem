@@ -382,22 +382,27 @@ export const dbService = {
     return await parseResponse(res);
   },
 
-  // 8. Verify Admin PIN
+  // 8. Verify Admin PIN (Strict Single-Password Authentication)
   async verifyAdminPin(pin) {
+    const cleanPin = String(pin || "").trim();
+    if (!cleanPin) return { ok: false, valid: false };
+
     const supabase = getSupabase();
     if (supabase) {
       try {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from("attendance_config")
           .select("admin_pin")
           .eq("id", "default")
           .maybeSingle();
 
-        const storedPin = data?.admin_pin || "0310";
-        const isValid = String(pin).trim() === String(storedPin).trim() || pin === "0310" || pin === "0307" || pin === "1234";
-        return { ok: isValid, valid: isValid };
-      } catch {
-        return { ok: pin === "0310" || pin === "0307" || pin === "1234", valid: pin === "0310" || pin === "0307" || pin === "1234" };
+        if (!error && data?.admin_pin) {
+          const storedPin = String(data.admin_pin).trim();
+          const isValid = cleanPin === storedPin;
+          return { ok: isValid, valid: isValid };
+        }
+      } catch (err) {
+        console.warn("[dbService] Supabase PIN check error:", err.message);
       }
     }
 
@@ -405,11 +410,13 @@ export const dbService = {
       const res = await apiFetch("/api/admin/verify-pin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pin }),
+        body: JSON.stringify({ pin: cleanPin }),
       });
       return await parseResponse(res);
     } catch {
-      return { ok: pin === "0310" || pin === "0307" || pin === "1234", valid: pin === "0310" || pin === "0307" || pin === "1234" };
+      const localPin = String(localStorage.getItem("secure_attendance_admin_pin") || "0310").trim();
+      const isValid = cleanPin === localPin;
+      return { ok: isValid, valid: isValid };
     }
   },
 

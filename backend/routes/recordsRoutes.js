@@ -86,7 +86,7 @@ export async function handleRecordsRoute(req, res, pathname, method, isLaptop, {
     const incomingPin = String(req.headers['x-admin-pin'] || '').trim();
     const db = getDb();
     const expectedPin = String(db.adminPin || '0310').trim();
-    const isAuthorized = isLaptop || incomingPin === expectedPin || incomingPin === '0310' || incomingPin === '0307' || incomingPin === '1234';
+    const isAuthorized = isLaptop || incomingPin === expectedPin;
 
     if (!isAuthorized) {
       return sendJson(res, 401, { ok: false, error: "Unauthorized: Admin PIN required to delete records" });
@@ -106,7 +106,7 @@ export async function handleRecordsRoute(req, res, pathname, method, isLaptop, {
     const incomingPin = String(req.headers['x-admin-pin'] || body.adminPin || body.pin || '').trim();
     const db = getDb();
     const expectedPin = String(db.adminPin || '0310').trim();
-    const isAuthorized = isLaptop || incomingPin === expectedPin || incomingPin === '0310' || incomingPin === '0307' || incomingPin === '1234';
+    const isAuthorized = isLaptop || incomingPin === expectedPin;
 
     if (!isAuthorized) {
       return sendJson(res, 401, { ok: false, error: "Unauthorized: Admin PIN required to clear records" });

@@ -27,11 +27,7 @@ export async function handleAdminRoute(req, res, pathname, method, isLaptop, { r
     const pin = String(body.pin || '').trim();
     const expectedPin = String(db.adminPin || '0310').trim();
 
-    const isValid =
-      pin === expectedPin ||
-      pin === '0310' ||
-      pin === '0307' ||
-      pin === '1234';
+    const isValid = pin === expectedPin;
 
     if (isValid) {
       return sendJson(res, 200, { ok: true, valid: true });
@@ -46,12 +42,7 @@ export async function handleAdminRoute(req, res, pathname, method, isLaptop, { r
     const db = getDb();
     const expectedPin = String(db.adminPin || '0310').trim();
 
-    const isCurrentValid =
-      isLaptop ||
-      incomingPin === expectedPin ||
-      incomingPin === '0310' ||
-      incomingPin === '0307' ||
-      incomingPin === '1234';
+    const isCurrentValid = isLaptop || incomingPin === expectedPin;
 
     if (!isCurrentValid) {
       return sendJson(res, 401, { ok: false, error: "Unauthorized: Correct current PIN required to change PIN" });

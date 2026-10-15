@@ -594,10 +594,9 @@ function App() {
           setTimeout(() => setPinInput(""), 700);
         }
       } catch {
-        if (nextPin === adminPin || nextPin === "0310" || nextPin === "0307" || nextPin === "1234") {
+        const activePin = String(adminPin || localStorage.getItem("secure_attendance_admin_pin") || "0310").trim();
+        if (nextPin === activePin) {
           setIsAdminUnlocked(true);
-          setAdminPin(nextPin);
-          localStorage.setItem("secure_attendance_admin_pin", nextPin);
           setShowPinModal(false);
           setPinInput("");
           setPage("admin");
