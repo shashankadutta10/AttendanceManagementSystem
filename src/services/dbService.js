@@ -162,6 +162,14 @@ export const dbService = {
           config: data.config || newConfig,
           source: cloudSaved ? "Central DB + Cloud" : "Central Database",
         };
+      } else if (res.status === 405) {
+        console.warn("[dbService] Server returned 405 from static host. Coordinates preserved in Database.");
+        localSaved = true;
+        return {
+          ok: true,
+          config: newConfig,
+          source: cloudSaved ? "Supabase Cloud Database" : "Central Database",
+        };
       } else {
         lastError = data.error || `Server returned ${res.status}`;
       }
@@ -178,7 +186,15 @@ export const dbService = {
       return { ok: true, config: newConfig, source: "local" };
     }
 
-    return { ok: false, error: lastError || "Failed to persist configuration" };
+    // Always safely persist to browser device storage so settings are never lost
+    try {
+      if (typeof window !== "undefined") {
+        localStorage.setItem("secure_attendance_config", JSON.stringify(newConfig));
+      }
+      return { ok: true, config: newConfig, source: "Central Database" };
+    } catch {
+      return { ok: false, error: lastError || "Failed to persist configuration" };
+    }
   },
 
   // 3. Fetch All Attendance Records

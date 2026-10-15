@@ -1,7 +1,13 @@
 import { getDb, saveDb } from '../dbManager.js';
 
 export async function handleConfigRoute(req, res, pathname, method, isLaptop, { readJsonBody, sendJson }) {
-  // 1. GET /api/config - Central Geofence & Schedule Parameters
+  // Preflight OPTIONS support
+  if (method === 'OPTIONS') {
+    res.statusCode = 204;
+    return res.end();
+  }
+
+  // 1. GET or HEAD /api/config - Central Geofence & Schedule Parameters
   if (method === 'GET' || method === 'HEAD') {
     const db = getDb();
     return sendJson(res, 200, {
@@ -12,8 +18,8 @@ export async function handleConfigRoute(req, res, pathname, method, isLaptop, { 
     }, method);
   }
 
-  // 2. POST or PUT /api/config - Update Central Geofence (Admin only)
-  if (method === 'POST' || method === 'PUT') {
+  // 2. ANY write method (POST, PUT, PATCH) - Update Central Geofence (Admin only)
+  try {
     const body = await readJsonBody(req);
     const db = getDb();
     const incomingPin = String(req.headers['x-admin-pin'] || body.adminPin || body.pin || '').trim();
@@ -79,7 +85,8 @@ export async function handleConfigRoute(req, res, pathname, method, isLaptop, { 
       config: db.config,
       source: "central-database",
     });
+  } catch (err) {
+    console.error("[Config Route] Error saving config:", err);
+    return sendJson(res, 500, { ok: false, error: err.message || "Failed to process config update" });
   }
-
-  return sendJson(res, 405, { ok: false, error: `Method ${method} not allowed on /api/config` });
 }
