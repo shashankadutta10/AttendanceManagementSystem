@@ -3,7 +3,7 @@
     "name": "SHASHANKA'S HOME",
     "latitude": 27.459316,
     "longitude": 94.552332,
-    "radius": 200,
+    "radius": 300,
     "startTime": "00:00",
     "endTime": "23:59",
     "strictAccuracy": true

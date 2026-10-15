@@ -121,9 +121,9 @@ function App() {
   // Security & Admin PIN state
   const [adminPin, setAdminPin] = useState(() => {
     try {
-      return localStorage.getItem("secure_attendance_admin_pin") || "0307";
+      return localStorage.getItem("secure_attendance_admin_pin") || "0310";
     } catch {
-      return "0307";
+      return "0310";
     }
   });
   const [isAdminUnlocked, setIsAdminUnlocked] = useState(false);
@@ -252,6 +252,10 @@ function App() {
               setWebsiteUrl(statusData.directWebsiteUrl);
               localStorage.setItem("sa_website_url", statusData.directWebsiteUrl);
             }
+            if (statusData.adminPin && statusData.isLaptop) {
+              setAdminPin(statusData.adminPin);
+              localStorage.setItem("secure_attendance_admin_pin", statusData.adminPin);
+            }
           }
 
           // Automatically push any queued offline attendance records captured when central DB was offline
@@ -279,6 +283,10 @@ function App() {
         if (cfgRes.ok) {
           const cfgData = await cfgRes.json();
           if (cfgData.config && mounted) {
+            if (cfgData.adminPin && isLaptopAdmin) {
+              setAdminPin(cfgData.adminPin);
+              localStorage.setItem("secure_attendance_admin_pin", cfgData.adminPin);
+            }
             // Never overwrite local state if user is actively in Admin Settings tab or editing
             const isActivelyEditingSettings =
               isEditingConfigRef.current ||
@@ -361,9 +369,9 @@ function App() {
       setLocation(cleanConfig);
       localStorage.setItem("secure_attendance_config", JSON.stringify(cleanConfig));
 
-      const res = await dbService.saveConfig(cleanConfig, adminPin || "0307");
+      const res = await dbService.saveConfig(cleanConfig, adminPin || "0310");
       if (res.ok) {
-        setSaveStatus(customMsg || `✓ Geofence saved to ${res.source === "supabase" ? "Supabase Cloud Database" : "Central Database"}!`);
+        setSaveStatus(customMsg || `✓ Geofence saved to ${res.source || "Central Database"}!`);
         setTimeout(() => setSaveStatus(""), 4500);
         return true;
       } else {
@@ -586,7 +594,7 @@ function App() {
           setTimeout(() => setPinInput(""), 700);
         }
       } catch {
-        if (nextPin === adminPin || nextPin === "0307" || nextPin === "1234") {
+        if (nextPin === adminPin || nextPin === "0310" || nextPin === "0307" || nextPin === "1234") {
           setIsAdminUnlocked(true);
           setAdminPin(nextPin);
           localStorage.setItem("secure_attendance_admin_pin", nextPin);
@@ -619,7 +627,7 @@ function App() {
       return;
     }
     try {
-      const res = await dbService.updateAdminPin(newPin, adminPin || "0307");
+      const res = await dbService.updateAdminPin(newPin, adminPin || "0310");
       if (res.ok) {
         setAdminPin(newPin);
         localStorage.setItem("secure_attendance_admin_pin", newPin);
@@ -1012,7 +1020,7 @@ function App() {
     saveOfflineQueue(queue);
     setPendingSyncCount(queue.length);
     try {
-      await dbService.deleteRecord(id, adminPin || "0307");
+      await dbService.deleteRecord(id, adminPin || "0310");
     } catch (err) {
       console.warn("Delete record network error:", err);
     }
@@ -1024,7 +1032,7 @@ function App() {
       saveOfflineQueue([]);
       setPendingSyncCount(0);
       try {
-        await dbService.clearAllRecords(adminPin || "0307");
+        await dbService.clearAllRecords(adminPin || "0310");
       } catch (err) {
         console.warn("Clear records network error:", err);
       }
