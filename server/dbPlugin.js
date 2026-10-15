@@ -1,6 +1,84 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import { spawn } from 'node:child_process';
+
+let cloudflareProcess = null;
+let currentCloudflareUrl = null;
+let isStartingCloudflare = false;
+
+async function startManagedCloudflareTunnel(forceNew = false) {
+  if (currentCloudflareUrl && cloudflareProcess && !forceNew) {
+    return currentCloudflareUrl;
+  }
+  if (isStartingCloudflare && !forceNew) {
+    return currentCloudflareUrl;
+  }
+
+  isStartingCloudflare = true;
+  return new Promise((resolve) => {
+    try {
+      if (cloudflareProcess) {
+        try { cloudflareProcess.kill(); } catch {}
+        cloudflareProcess = null;
+      }
+
+      console.log('[Direct Website] Starting Cloudflare direct link (Trusted SSL, zero passwords, works on iOS & Android)...');
+      const proc = spawn('npx', ['-y', 'cloudflared', 'tunnel', '--url', 'https://127.0.0.1:5173', '--no-tls-verify'], {
+        shell: true,
+      });
+
+      cloudflareProcess = proc;
+      let resolved = false;
+
+      const handleData = (chunk) => {
+        const text = chunk.toString();
+        const match = text.match(/https:\/\/[a-z0-9-]+\.trycloudflare\.com/i);
+        if (match && !resolved) {
+          resolved = true;
+          isStartingCloudflare = false;
+          currentCloudflareUrl = match[0];
+          console.log(`[Direct Website] ✓ Cloudflare Direct Link Online: ${currentCloudflareUrl}`);
+          resolve(currentCloudflareUrl);
+        }
+      };
+
+      proc.stdout.on('data', handleData);
+      proc.stderr.on('data', handleData);
+
+      proc.on('close', () => {
+        console.warn('[Direct Website] Process closed. Reconnecting in 5s...');
+        cloudflareProcess = null;
+        currentCloudflareUrl = null;
+        isStartingCloudflare = false;
+        setTimeout(() => startManagedCloudflareTunnel(false), 5000);
+      });
+
+      proc.on('error', (err) => {
+        console.error('[Direct Website] Process error:', err);
+        cloudflareProcess = null;
+        isStartingCloudflare = false;
+        if (!resolved) {
+          resolved = true;
+          resolve(null);
+        }
+      });
+
+      // 15 second safety timeout
+      setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          isStartingCloudflare = false;
+          resolve(currentCloudflareUrl);
+        }
+      }, 15000);
+    } catch (e) {
+      console.error('[Direct Website] Spawn error:', e);
+      isStartingCloudflare = false;
+      resolve(null);
+    }
+  });
+}
 
 function getLocalIpAddresses() {
   const nets = os.networkInterfaces();
@@ -130,9 +208,15 @@ export function attendanceBackendPlugin() {
     name: 'attendance-backend-plugin',
     configureServer(server) {
       handleMiddlewares(server.middlewares);
+      startManagedCloudflareTunnel().catch((err) => {
+        console.warn('[Direct Website] Background start deferred:', err?.message || err);
+      });
     },
     configurePreviewServer(server) {
       handleMiddlewares(server.middlewares);
+      startManagedCloudflareTunnel().catch((err) => {
+        console.warn('[Direct Website] Background start deferred:', err?.message || err);
+      });
     },
   };
 }
@@ -173,6 +257,7 @@ function handleMiddlewares(middlewares) {
           host: req.headers?.host,
           totalRecords: db.records.length,
           locationName: db.config.name,
+          directWebsiteUrl: currentCloudflareUrl,
           wifiIp: network.wifiIp,
           hotspotIp: network.hotspotIp,
           networkIps: network.all,
@@ -379,7 +464,17 @@ function handleMiddlewares(middlewares) {
         console.log(`[Database] Admin PIN updated successfully to: ${newPin}`);
         return sendJson(res, 200, { ok: true, message: "PIN updated" });
       }
-
+      // 11. POST /api/website/reconnect - Refresh / reconnect live Cloudflare direct website link
+      if (pathname === '/api/website/reconnect' && method === 'POST') {
+        const cloudflareUrl = await startManagedCloudflareTunnel(true);
+        const network = getLocalIpAddresses();
+        return sendJson(res, 200, {
+          ok: Boolean(cloudflareUrl),
+          directWebsiteUrl: cloudflareUrl,
+          wifiIp: network.wifiIp,
+          hotspotIp: network.hotspotIp,
+        });
+      }
 
       // Unknown API route
       return sendJson(res, 404, { ok: false, error: `Route ${method} ${pathname} not found` });
